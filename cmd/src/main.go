@@ -86,13 +86,6 @@ func (clov CloV) isValue() {}
 type ErrorV struct {}
 func (err ErrorV) isValue() {}
 
-type ClosV struct {
-    args []Symbol
-    body ExprC
-    env  Env
-}
-func (closv ClosV) isValue() {}
-
 type Binding struct {
 	name Symbol
 	val Value
@@ -150,7 +143,7 @@ func interp(exp ExprC, env Env) (Value, error) {
         case PrimV:
             return interpPrim(funV.val, argVals)
             
-        case ClosV:
+        case CloV:
             if len(funV.args) != len(argVals) {
                 return ErrorV{}, errors.New("AAQZ arity mismatch between params and args")
             }
