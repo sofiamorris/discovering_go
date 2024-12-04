@@ -1,6 +1,9 @@
 package main
-import ("fmt")
-import "errors"
+
+import (
+	"errors"
+	"fmt"
+)
 
 type Symbol string;
 
@@ -76,6 +79,13 @@ func (PrimV PrimV) isValue() {}
 type ErrorV struct {}
 func (err ErrorV) isValue() {}
 
+type ClosV struct {
+    args []Symbol
+    body ExprC
+    env  Env
+}
+func (closv ClosV) isValue() {}
+
 type Binding struct {
 	name Symbol
 	val Value
@@ -102,11 +112,139 @@ func interp(exp ExprC, env Env) (Value, error) {
 	case IfC:
 		//
 	case AppC:
-		//
+		funVal, err := interp(e.fun, env)
+        if err != nil {
+            return ErrorV{}, err
+        }
+        
+        // Evaluate all arguments
+        argVals := make([]Value, len(e.arg))
+        for i, arg := range e.arg {
+            val, err := interp(arg, env)
+            if err != nil {
+                return ErrorV{}, err
+            }
+            argVals[i] = val
+        }
+        
+        switch funV := funVal.(type) {
+        case PrimV:
+            return interpPrim(funV.val, argVals)
+            
+        case ClosV:
+            if len(funV.args) != len(argVals) {
+                return ErrorV{}, errors.New("AAQZ arity mismatch between params and args")
+            }
+            
+            // Create new environment with function arguments
+            newEnv := make(Env)
+            for k, v := range funV.env {
+                newEnv[k] = v
+            }
+            
+            // Bind arguments to parameters in new environment
+            for i, param := range funV.args {
+                newEnv[param] = argVals[i]
+            }
+            
+            return interp(funV.body, newEnv)
+            
+        default:
+            return ErrorV{}, errors.New("AAQZ cannot apply non-function value")
+        }
 	case LamC:
 		//
 	}
 	return ret, err
+}
+
+func interpPrim(op Symbol, args []Value) (Value, error) {
+    switch op {
+    case "+", "-", "*", "/":
+        if len(args) != 2 {
+            return ErrorV{}, errors.New("AAQZ arithmetic operations require exactly two arguments")
+        }
+        
+        n1, ok1 := args[0].(NumV)
+        n2, ok2 := args[1].(NumV)
+        if !ok1 || !ok2 {
+            return ErrorV{}, errors.New("AAQZ arithmetic operations require numeric arguments")
+        }
+        
+        switch op {
+        case "+":
+            return NumV{val: n1.val + n2.val}, nil
+        case "-":
+            return NumV{val: n1.val - n2.val}, nil
+        case "*":
+            return NumV{val: n1.val * n2.val}, nil
+        case "/":
+            if n2.val == 0 {
+                return ErrorV{}, errors.New("AAQZ division by zero")
+            }
+            return NumV{val: n1.val / n2.val}, nil
+        }
+        
+    case "<=":
+        if len(args) != 2 {
+            return ErrorV{}, errors.New("AAQZ comparison requires exactly two arguments")
+        }
+        
+        n1, ok1 := args[0].(NumV)
+        n2, ok2 := args[1].(NumV)
+        if !ok1 || !ok2 {
+            return ErrorV{}, errors.New("AAQZ comparison requires numeric arguments")
+        }
+        
+        return BoolV{val: n1.val <= n2.val}, nil
+        
+    case "equal?":
+        if len(args) != 2 {
+            return ErrorV{}, errors.New("AAQZ equal? requires exactly two arguments")
+        }
+        return BoolV{val: fmt.Sprint(args[0]) == fmt.Sprint(args[1])}, nil
+        
+    case "println":
+        if len(args) != 1 {
+            return ErrorV{}, errors.New("AAQZ println requires exactly one argument")
+        }
+        
+        str, ok := args[0].(StrV)
+        if !ok {
+            return ErrorV{}, errors.New("AAQZ println requires string argument")
+        }
+        
+        fmt.Println(str.val)
+        return BoolV{val: true}, nil
+        
+    case "seq":
+        if len(args) == 0 {
+            return ErrorV{}, errors.New("AAQZ seq requires at least one expression")
+        }
+        return args[len(args)-1], nil
+        
+    case "++":
+        if len(args) == 0 {
+            return ErrorV{}, errors.New("AAQZ ++ requires at least one argument")
+        }
+        
+        result := ""
+        for _, arg := range args {
+            switch v := arg.(type) {
+            case StrV:
+                result += v.val
+            case NumV:
+                result += fmt.Sprint(v.val)
+            default:
+                result += fmt.Sprint(v)
+            }
+        }
+        return StrV{val: result}, nil
+        
+    default:
+        return ErrorV{}, errors.New("AAQZ unknown primitive operation: " + string(op))
+    }
+    return ErrorV{}, errors.New("AAQZ unhandled primitive operation")
 }
 
 func main() {
