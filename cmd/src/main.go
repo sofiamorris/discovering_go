@@ -1,5 +1,6 @@
 package main
 import ("fmt")
+import "errors"
 
 type Symbol string;
 
@@ -9,7 +10,7 @@ type ExprC interface {
 }
 //represents a number
 type NumC struct {
-	n int
+	num int
 }
 func (numc NumC) isExprC() {}
 
@@ -72,6 +73,9 @@ type PrimV struct {
 }
 func (PrimV PrimV) isValue() {}
 
+type ErrorV struct {}
+func (err ErrorV) isValue() {}
+
 type Binding struct {
 	name Symbol
 	val Value
@@ -79,8 +83,30 @@ type Binding struct {
 
 type Env map[Symbol]Value
 
-func interp(exp ExprC, env Env) {
-	
+func interp(exp ExprC, env Env) (Value, error) {
+	var ret Value
+	var err error = nil
+	switch e := exp.(type) {
+	case NumC:
+		ret=NumV{val: e.num}
+	case IdC:
+		val, ok := env[e.name]
+		if ok {
+			ret=val
+		} else {
+			ret=ErrorV{}
+			err=errors.New("id not in env")
+		}
+	case StrC:
+		ret=StrV{val: e.str}
+	case IfC:
+		//
+	case AppC:
+		//
+	case LamC:
+		//
+	}
+	return ret, err
 }
 
 func main() {
@@ -101,6 +127,7 @@ func main() {
 		"++": PrimV{val: "++"},
 		"random": PrimV{val: "random"},
 	}
-
+	exp := NumC{num: 3}
+	interp(exp, topenv)
 
 }
