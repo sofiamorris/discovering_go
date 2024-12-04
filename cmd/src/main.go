@@ -76,6 +76,13 @@ type PrimV struct {
 }
 func (PrimV PrimV) isValue() {}
 
+type CloV struct {
+	args []Symbol
+	body ExprC
+	env Env
+}
+func (clov CloV) isValue() {}
+
 type ErrorV struct {}
 func (err ErrorV) isValue() {}
 
@@ -110,7 +117,19 @@ func interp(exp ExprC, env Env) (Value, error) {
 	case StrC:
 		ret=StrV{val: e.str}
 	case IfC:
-		//
+		var interped Value
+		interped,err = interp(e.cond, env)
+		switch v := interped.(type) {
+		case BoolV: 
+			if v.val {
+				interp(e.t, env)
+			} else {
+				interp(e.f, env)
+			}
+		default: 
+			ret=ErrorV{}
+			err=errors.New("condition must evaluate to boolean")
+		}
 	case AppC:
 		funVal, err := interp(e.fun, env)
         if err != nil {
@@ -153,7 +172,11 @@ func interp(exp ExprC, env Env) (Value, error) {
             return ErrorV{}, errors.New("AAQZ cannot apply non-function value")
         }
 	case LamC:
-		//
+		ret=CloV{
+			args: e.args,
+			body: e.body,
+			env: env,
+		}
 	}
 	return ret, err
 }
@@ -258,12 +281,6 @@ func main() {
 		"true": PrimV{val: "true"},
 		"false": PrimV{val: "false"},
 		"error": PrimV{val: "error"},
-		"println": PrimV{val: "println"},
-		"read-num": PrimV{val: "read-num"},
-		"read-str": PrimV{val: "read-str"},
-		"seq": PrimV{val: "seq"},
-		"++": PrimV{val: "++"},
-		"random": PrimV{val: "random"},
 	}
 	exp := NumC{num: 3}
 	interp(exp, topenv)
