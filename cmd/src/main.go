@@ -86,11 +86,6 @@ func (clov CloV) isValue() {}
 type ErrorV struct {}
 func (err ErrorV) isValue() {}
 
-type Binding struct {
-	name Symbol
-	val Value
-}
-
 type Env map[Symbol]Value
 
 func interp(exp ExprC, env Env) (Value, error) {
@@ -105,7 +100,7 @@ func interp(exp ExprC, env Env) (Value, error) {
 			ret=val
 		} else {
 			ret=ErrorV{}
-			err=errors.New("id not in env")
+			err=errors.New("AAQZ name not found: " + string(e.name))
 		}
 	case StrC:
 		ret=StrV{val: e.str}
@@ -121,7 +116,7 @@ func interp(exp ExprC, env Env) (Value, error) {
 			}
 		default: 
 			ret=ErrorV{}
-			err=errors.New("condition must evaluate to boolean")
+			err=errors.New("AAQZ expected boolean condition")
 		}
 	case AppC:
 		funVal, err := interp(e.fun, env)
@@ -271,9 +266,12 @@ func main() {
 		"/": PrimV{val: "/"},
 		"<=": PrimV{val: "<="},
 		"equal?": PrimV{val: "equal?"},
-		"true": PrimV{val: "true"},
-		"false": PrimV{val: "false"},
+		"true": BoolV{val: true},
+		"false": BoolV{val: false},
 		"error": PrimV{val: "error"},
+		"println": PrimV{val: "println"},
+        "seq": PrimV{val: "seq"},
+        "++": PrimV{val: "++"},
 	}
 	exp := NumC{num: 3}
 	interp(exp, topenv)
