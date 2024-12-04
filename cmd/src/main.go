@@ -100,7 +100,20 @@ func interp(exp ExprC, env Env) (Value, error) {
 	case StrC:
 		ret=StrV{val: e.str}
 	case IfC:
-		//
+		var interped Value
+		interped,err = interp(e.cond, env)
+		switch v := interped.(type) {
+		case BoolV: 
+			if v.val {
+				interp(e.t, env)
+			} else {
+				interp(e.f, env)
+			}
+		default: 
+			ret=ErrorV{}
+			err=errors.New("condition must evaluate to boolean")
+		}
+
 	case AppC:
 		//
 	case LamC:
