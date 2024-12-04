@@ -73,6 +73,13 @@ type PrimV struct {
 }
 func (PrimV PrimV) isValue() {}
 
+type CloV struct {
+	args []Symbol
+	body ExprC
+	env Env
+}
+func (clov CloV) isValue() {}
+
 type ErrorV struct {}
 func (err ErrorV) isValue() {}
 
@@ -113,11 +120,14 @@ func interp(exp ExprC, env Env) (Value, error) {
 			ret=ErrorV{}
 			err=errors.New("condition must evaluate to boolean")
 		}
-
 	case AppC:
 		//
 	case LamC:
-		//
+		ret=CloV{
+			args: e.args,
+			body: e.body,
+			env: env,
+		}
 	}
 	return ret, err
 }
@@ -133,12 +143,6 @@ func main() {
 		"true": PrimV{val: "true"},
 		"false": PrimV{val: "false"},
 		"error": PrimV{val: "error"},
-		"println": PrimV{val: "println"},
-		"read-num": PrimV{val: "read-num"},
-		"read-str": PrimV{val: "read-str"},
-		"seq": PrimV{val: "seq"},
-		"++": PrimV{val: "++"},
-		"random": PrimV{val: "random"},
 	}
 	exp := NumC{num: 3}
 	interp(exp, topenv)
