@@ -108,6 +108,7 @@ func interp(exp ExprC, env Env) (Value, error) {
 		ret = NumV{val: e.num}
 	case IdC:
 		val, ok := env[e.name]
+
 		if ok {
 			ret = val
 		} else {
@@ -119,12 +120,17 @@ func interp(exp ExprC, env Env) (Value, error) {
 	case IfC:
 		var interped Value
 		interped, err = interp(e.cond, env)
+
+		if err != nil {
+			return interped, err
+		}
+
 		switch v := interped.(type) {
 		case BoolV:
 			if v.val {
-				interp(e.t, env)
+				ret, err = interp(e.t, env)
 			} else {
-				interp(e.f, env)
+				ret, err = interp(e.f, env)
 			}
 		default:
 			ret = ErrorV{}
@@ -290,7 +296,7 @@ func serialize(v Value) (string, error) {
 		result = "#<procedure>"
 	default:
 		result = "unimplemented"
-		err = errors.New("AAQZ unimplemented Value type")
+		err = errors.New("AAQZ serialize: unimplemented Value type")
 	}
 	return result, err
 }
@@ -310,8 +316,17 @@ func main() {
 		"seq":     PrimV{val: "seq"},
 		"++":      PrimV{val: "++"},
 	}
-	exp := NumC{num: 3}
-	interp(exp, topenv)
+	// exp := NumC{num: 3}
+	exp := IfC{
+		cond: AppC{
+			fun: IdC{name: "<="},
+			arg: []ExprC{NumC{num: 1}, NumC{num: 5}},
+		},
+		t: NumC{num: 1},
+		f: NumC{num: -1},
+	}
+	v, _ := interp(exp, topenv)
+	fmt.Println(serialize(v))
 
 	tests := []struct {
 		name     string
