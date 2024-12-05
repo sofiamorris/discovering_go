@@ -281,6 +281,7 @@ func main() {
         exp ExprC
         expected Value
     }{
+		// Add test cases here:
 		{
         	name:     "Simple number",
         	exp:      NumC{num: 42},
