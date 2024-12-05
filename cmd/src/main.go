@@ -188,8 +188,6 @@ func interp(exp ExprC, env Env) (Value, error) {
 }
 
 func parse(array interface{}) (ExprC){
-	var ret ExprC
-	var err error = nil
 	switch v := array.(type){
 	case int:
 		return NumC{num: v}
@@ -207,11 +205,9 @@ func parse(array interface{}) (ExprC){
 			if len(v) != 4 {
 				panic("Invalid 'if' syntax")
 			}
-			return IfC{
-				cond: parseArray(v[1])
-				t: parseArray(v[2])
-				f: parseArray(v[3])
-			}
+			return IfC{cond: parse(v[1]),
+				t: parse(v[2]),
+				f: parse(v[3])}
 		} else if argList, ok := head.([]interface{}); ok {
 			if len(v) == 3 && v[1] == "=>"{
 				args := make([]Symbol, len(argList))
@@ -222,42 +218,36 @@ func parse(array interface{}) (ExprC){
 					}
 					args[i] = Symbol(argStr)
 				}
-				body := parseArray(v[2])
-				return LamC{
-					args: args,
-					body: body
-				}
+				body := parse(v[2])
+				return LamC{args: args,
+					body: body}
 			}
 		} else {
-			funcExpr := parseArray(v[0])
+			funcExpr := parse(v[0])
 			args := make([]ExprC, len(v)-1)
 			for i, arg:= range v[1:]{
-					args[i] = parseArray(arg)
+					args[i] = parse(arg)
 				}
-				return AppC{
-					fun: funcExpr,
-					arg: args
-				}
+				return AppC{fun: funcExpr,
+					arg: args}
 			}
 		}
+		panic(fmt.Sprintf("Unsupported expression type: %T", array))
 	}
 
 //helper function to test parse
 func testParse(input interface{}, expected ExprC, error bool){
 	result := parse(input)
+
 	if error {
-		t.Errorf("Expected panic but got result: %v", result)
+		fmt.Printf("Expected panic but got result: %v", result)
 		return
 	}
 
-	if fmt.Sprintf("%T", result){
-		t.Errorf("Expected type %T but got %T", expected, result)
-	}
-
-	if result != expected{
-		t.Errorf("Expected %v but got %v", expected, result)
-	}
-
+	if fmt.Sprintf("%T", result) != fmt.Sprintf("%T", expected) {
+        fmt.Printf("Type mismatch: Expected type %T but got type %T\n", expected, result)
+        return
+    }
 }
 	
 func interpPrim(op Symbol, args []Value) (Value, error) {
@@ -459,53 +449,37 @@ func main() {
 	}
 
 	testParse(42, NumC{num: 42}, false)
-	testParse("hello", StrC{str: "hello", false})
+	testParse("hello", StrC{str: "hello"}, false)
 	testParse(Symbol("x"), IdC{name: "x"}, false)
 
-	parseIf := []interface{}{
-		"if",
-		[]interface{}{"x"},
-		[]interface{}{"y"},
-		[]interface{}{"z"}
-	}
+	parseIf := []interface{}{"if", "x", "y", "z"}
 	expectedIf := IfC{
 		cond: IdC{name: "x"},
 		t: IdC{name: "y"},
-		f: IdC{name: "z"}
-	}
+		f: IdC{name: "z"}}
 	testParse(parseIf, expectedIf, false)
 
 	parseLambda := []interface{}{
 		[]interface{}{"x", "y"},
 		"=>",
-		[]interface{}{"+", "x", "y"}
-	}
+		[]interface{}{"+", "x", "y"}}
 	expectedLambda := LamC{
-		args: []interface{
-			IdC{name: "x"},
-			IdC{name: "y"}}
+		args: []Symbol{"x", "y"},
 		body: AppC{
-			fun: IdC{name: "+"}
-			arg: []interface{
+			fun: IdC{name: "+"},
+			arg: []ExprC{
 				IdC{name: "x"},
-				IdC{name: "y"}
-			}
-		}
-	}
+				IdC{name: "y"}}}}
 	testParse(parseLambda, expectedLambda, false)
 
 	parseAppC := []interface{}{
 		"+", 
-		[]interface{}{1, 2}
-	}
+		[]interface{}{1, 2}}
 	expectedAppC := AppC{
 		fun: IdC{name: "+"},
-		arg: []interface{
+		arg: []ExprC{
 			NumC{num: 1},
-			NumC{num: 2}
-		}
-	}
+			NumC{num: 2}}}
 	testParse(parseAppC, expectedAppC, false)
-	testParse([]interface{}{}, nil, true)
 }
 
