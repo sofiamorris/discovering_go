@@ -241,6 +241,24 @@ func parse(array interface{}) (ExprC){
 			}
 		}
 	}
+
+//helper function to test parse
+func testParse(input interface{}, expected ExprC, error bool){
+	result := parse(input)
+	if error {
+		t.Errorf("Expected panic but got result: %v", result)
+		return
+	}
+
+	if fmt.Sprintf("%T", result){
+		t.Errorf("Expected type %T but got %T", expected, result)
+	}
+
+	if result != expected{
+		t.Errorf("Expected %v but got %v", expected, result)
+	}
+
+}
 	
 func interpPrim(op Symbol, args []Value) (Value, error) {
 	switch op {
@@ -439,4 +457,55 @@ func main() {
 			}
 		}
 	}
+
+	testParse(42, NumC{num: 42}, false)
+	testParse("hello", StrC{str: "hello", false})
+	testParse(Symbol("x"), IdC{name: "x"}, false)
+
+	parseIf := []interface{}{
+		"if",
+		[]interface{}{"x"},
+		[]interface{}{"y"},
+		[]interface{}{"z"}
+	}
+	expectedIf := IfC{
+		cond: IdC{name: "x"},
+		t: IdC{name: "y"},
+		f: IdC{name: "z"}
+	}
+	testParse(parseIf, expectedIf, false)
+
+	parseLambda := []interface{}{
+		[]interface{}{"x", "y"},
+		"=>",
+		[]interface{}{"+", "x", "y"}
+	}
+	expectedLambda := LamC{
+		args: []interface{
+			IdC{name: "x"},
+			IdC{name: "y"}}
+		body: AppC{
+			fun: IdC{name: "+"}
+			arg: []interface{
+				IdC{name: "x"},
+				IdC{name: "y"}
+			}
+		}
+	}
+	testParse(parseLambda, expectedLambda, false)
+
+	parseAppC := []interface{}{
+		"+", 
+		[]interface{}{1, 2}
+	}
+	expectedAppC := AppC{
+		fun: IdC{name: "+"},
+		arg: []interface{
+			NumC{num: 1},
+			NumC{num: 2}
+		}
+	}
+	testParse(parseAppC, expectedAppC, false)
+	testParse([]interface{}{}, nil, true)
 }
+
