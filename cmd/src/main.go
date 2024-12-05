@@ -109,6 +109,39 @@ func interp(exp ExprC, env Env) (Value, error) {
 	return ret, err
 }
 
+func parse(array interface{}) (ExprC){
+	var ret ExprC
+	var err error = nil
+	switch v := array.(type){
+	case int:
+		return NumC{num: v}
+	case string:
+		return StrC{str: v}
+	case Symbol:
+		return IdC{name: v}
+	case []interface{}:
+		if len(v) == 0{
+			panic("Invalid expression: empty list")
+		}
+		head := v[0]
+		switch head {
+		case "if":
+			if len(v) != 4 {
+				panic("Invalid 'if' syntax")
+			}
+			return IfC{
+				cond: parseArray(v[1])
+				t: parseArray(v[2])
+				f: parseArray(v[3])
+			}
+		case for AppC:
+			//
+		case for LamC:
+			//
+		}
+	}
+}
+
 func main() {
 	topenv := Env{
 		"+": PrimV{val: "+"},
