@@ -276,4 +276,28 @@ func main() {
 	exp := NumC{num: 3}
 	interp(exp, topenv)
 
+	tests := []struct {
+        exp ExprC
+        expected Value
+    }{
+        {NumC{num: 42}, NumV{val: 42}},
+        {StrC{str: "hello"}, StrV{val: "hello"}},
+        {IfC{
+            cond: IdC{name: "true"},
+            t: NumC{num: 1},
+            f: NumC{num: 2},
+        }, NumV{val: 1}},
+    }
+
+    for i, test := range tests {
+        if result, err := interp(test.exp, topenv); err != nil {
+            fmt.Printf("Test %d failed with error: %v\n", i, err)
+        } else if result != test.expected {
+            fmt.Printf("Test %d: got %v, wanted %v\n", i, result, test.expected)
+        } else {
+			fmt.Printf("Test %d: Passed \n", i)
+		}
+
+    }
+
 }
