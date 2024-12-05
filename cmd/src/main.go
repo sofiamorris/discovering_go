@@ -277,27 +277,58 @@ func main() {
 	interp(exp, topenv)
 
 	tests := []struct {
+		name string
         exp ExprC
         expected Value
     }{
-        {NumC{num: 42}, NumV{val: 42}},
-        {StrC{str: "hello"}, StrV{val: "hello"}},
-        {IfC{
-            cond: IdC{name: "true"},
-            t: NumC{num: 1},
-            f: NumC{num: 2},
-        }, NumV{val: 1}},
+		{
+        	name:     "Simple number",
+        	exp:      NumC{num: 42},
+        	expected: NumV{val: 42},
+		},
+        {
+			name:  "Simple string",
+			exp:	StrC{str: "hello"},
+			expected: StrV{val: "hello"},
+		},
+        {
+            name: "If true condition",
+            exp: IfC{
+                cond: IdC{name: "true"},
+                t:    NumC{num: 1},
+                f:    NumC{num: 2},
+            },
+            expected: NumV{val: 1},
+        },
     }
 
     for i, test := range tests {
-        if result, err := interp(test.exp, topenv); err != nil {
-            fmt.Printf("Test %d failed with error: %v\n", i, err)
-        } else if result != test.expected {
-            fmt.Printf("Test %d: got %v, wanted %v\n", i, result, test.expected)
+        result, err := interp(test.exp, topenv)
+        if err != nil {
+            fmt.Printf("Test %d (%s) failed with error: %v\n", i, test.name, err)
         } else {
-			fmt.Printf("Test %d: Passed \n", i)
-		}
-
-    }
-
+            switch expected := test.expected.(type) {
+            case NumV:
+                if result.(NumV).val != expected.val {
+                    fmt.Printf("Test %d (%s): got %v, wanted %v\n", i, test.name, result.(NumV).val, expected.val)
+                } else {
+                    fmt.Printf("Test %d (%s): Passed\n", i, test.name)
+                }
+            case BoolV:
+                if result.(BoolV).val != expected.val {
+                    fmt.Printf("Test %d (%s): got %v, wanted %v\n", i, test.name, result.(BoolV).val, expected.val)
+                } else {
+                    fmt.Printf("Test %d (%s): Passed\n", i, test.name)
+                }
+            case StrV:
+                if result.(StrV).val != expected.val {
+                    fmt.Printf("Test %d (%s): got %v, wanted %v\n", i, test.name, result.(StrV).val, expected.val)
+                } else {
+                    fmt.Printf("Test %d (%s): Passed\n", i, test.name)
+                }
+            default:
+                fmt.Printf("Test %d (%s): Unexpected type\n", i, test.name)
+            }
+        }
+	}
 }
