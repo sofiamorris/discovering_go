@@ -202,8 +202,8 @@ func parse(array interface{}) (ExprC){
 			panic("Invalid expression: empty list")
 		}
 		head := v[0]
-		switch head {
-		case "if":
+
+		if head == "if"{
 			if len(v) != 4 {
 				panic("Invalid 'if' syntax")
 			}
@@ -212,12 +212,36 @@ func parse(array interface{}) (ExprC){
 				t: parseArray(v[2])
 				f: parseArray(v[3])
 			}
-		case for AppC:
-			//
-		case for LamC:
-			//
+		} else if argList, ok := head.([]interface{}); ok {
+			if len(v) == 3 && v[1] == "=>"{
+				args := make([]Symbol, len(argList))
+				for i, arg := range argList {
+					argStr, ok := arg.(string)
+					if !ok {
+						panic(fmt.Sprintf("Invalid lambda argument: %v", arg))
+					}
+					args[i] = Symbol(argStr)
+				}
+				body := parseArray(v[2])
+				return LamC{
+					args: args,
+					body: body
+				}
+			}
+		} else {
+			funcExpr := parseArray(v[0])
+			args := make([]ExprC, len(v)-1)
+			for i, arg:= range v[1:]{
+					args[i] = parseArray(arg)
+				}
+				return AppC{
+					fun: funcExpr,
+					arg: args
+				}
+			}
 		}
 	}
+	
 func interpPrim(op Symbol, args []Value) (Value, error) {
 	switch op {
 	case "+", "-", "*", "/":
