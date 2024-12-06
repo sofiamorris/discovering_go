@@ -59,6 +59,12 @@ type LamC struct {
 
 func (lamc LamC) isExprC() {}
 
+type BoolC struct {
+	bool bool
+}
+
+func (boolc BoolC) isExprC() {}
+
 type Value interface {
 	isValue()
 }
@@ -395,17 +401,20 @@ func main() {
 		name     string
 		exp      ExprC
 		expected Value
+		wantErr  bool
 	}{
 		// Add test cases here:
 		{
 			name:     "Simple number",
 			exp:      NumC{num: 42},
 			expected: NumV{val: 42},
+			wantErr:  false,
 		},
 		{
 			name:     "Simple string",
 			exp:      StrC{str: "hello"},
 			expected: StrV{val: "hello"},
+			wantErr:  false,
 		},
 		{
 			name: "If true condition",
@@ -415,36 +424,134 @@ func main() {
 				f:    NumC{num: 2},
 			},
 			expected: NumV{val: 1},
+			wantErr:  false,
+		},
+		{
+			name: "If false condition",
+			exp: IfC{
+				cond: IdC{name: "false"},
+				t:    NumC{num: 1},
+				f:    NumC{num: 2},
+			},
+			expected: NumV{val: 2},
+			wantErr:  false,
+		},
+		{
+			name: "Arithmetic addition",
+			exp: AppC{
+				fun: IdC{name: "+"},
+				arg: []ExprC{NumC{num: 2}, NumC{num: 3}},
+			},
+			expected: NumV{val: 5},
+			wantErr:  false,
+		},
+		{
+			name: "Comparison operation (<=)",
+			exp: AppC{
+				fun: IdC{name: "<="},
+				arg: []ExprC{NumC{num: 2}, NumC{num: 3}},
+			},
+			expected: BoolV{val: true},
+			wantErr:  false,
+		},
+		{
+			name: "Unknown identifier",
+			exp:  IdC{name: "unknown"},
+			wantErr: true,
+		},
+		{
+			name: "Simple lambda",
+			exp: LamC{
+				args: []Symbol{"x"},
+				body: IdC{name: "x"},
+			},
+			expected: CloV{
+				args: []Symbol{"x"},
+				body: IdC{name: "x"},
+				env:  topenv,
+			},
+			wantErr: false,
+		},
+		{
+			name: "Lambda application",
+			exp: AppC{
+				fun: LamC{
+					args: []Symbol{"x"},
+					body: IdC{name: "x"},
+				},
+				arg: []ExprC{NumC{num: 42}},
+			},
+			expected: NumV{val: 42},
+			wantErr:  false,
 		},
 	}
 
 	for i, test := range tests {
 		result, err := interp(test.exp, topenv)
-		if err != nil {
-			fmt.Printf("Test %d (%s) failed with error: %v\n", i, test.name, err)
-		} else {
-			switch expected := test.expected.(type) {
-			case NumV:
-				if result.(NumV).val != expected.val {
-					fmt.Printf("Test %d (%s): got %v, wanted %v\n", i, test.name, result.(NumV).val, expected.val)
-				} else {
-					fmt.Printf("Test %d (%s): Passed\n", i, test.name)
-				}
-			case BoolV:
-				if result.(BoolV).val != expected.val {
-					fmt.Printf("Test %d (%s): got %v, wanted %v\n", i, test.name, result.(BoolV).val, expected.val)
-				} else {
-					fmt.Printf("Test %d (%s): Passed\n", i, test.name)
-				}
-			case StrV:
-				if result.(StrV).val != expected.val {
-					fmt.Printf("Test %d (%s): got %v, wanted %v\n", i, test.name, result.(StrV).val, expected.val)
-				} else {
-					fmt.Printf("Test %d (%s): Passed\n", i, test.name)
-				}
-			default:
-				fmt.Printf("Test %d (%s): Unexpected type\n", i, test.name)
+		
+		if test.wantErr {
+			if err == nil {
+				fmt.Printf("Test %d (%s) failed: expected error but got none\n", i, test.name)
+			} else {
+				fmt.Printf("Test %d (%s): Passed (got expected error: %v)\n", i, test.name, err)
 			}
+			continue
+		}
+		
+		if err != nil {
+			fmt.Printf("Test %d (%s) failed with unexpected error: %v\n", i, test.name, err)
+			continue
+		}
+	
+		passed := false
+		var message string
+	
+		switch expected := test.expected.(type) {
+		case NumV:
+			if v, ok := result.(NumV); ok && v.val == expected.val {
+				passed = true
+			} else {
+				message = fmt.Sprintf("got %v, wanted %v", result, expected)
+			}
+		case BoolV:
+			if v, ok := result.(BoolV); ok && v.val == expected.val {
+				passed = true
+			} else {
+				message = fmt.Sprintf("got %v, wanted %v", result, expected)
+			}
+		case StrV:
+			if v, ok := result.(StrV); ok && v.val == expected.val {
+				passed = true
+			} else {
+				message = fmt.Sprintf("got %v, wanted %v", result, expected)
+			}
+		case CloV:
+			if v, ok := result.(CloV); ok {
+				// Compare only args and body, not environment
+				if fmt.Sprintf("%v", v.args) == fmt.Sprintf("%v", expected.args) &&
+				   fmt.Sprintf("%v", v.body) == fmt.Sprintf("%v", expected.body) {
+					passed = true
+				} else {
+					message = fmt.Sprintf("got (args: %v, body: %v), wanted (args: %v, body: %v)",
+						v.args, v.body, expected.args, expected.body)
+				}
+			} else {
+				message = fmt.Sprintf("got type %T, wanted CloV", result)
+			}
+		case ErrorV:
+			if _, ok := result.(ErrorV); ok {
+				passed = true
+			} else {
+				message = fmt.Sprintf("got %T, wanted ErrorV", result)
+			}
+		default:
+			message = fmt.Sprintf("unexpected expected type %T", test.expected)
+		}
+	
+		if passed {
+			fmt.Printf("Test %d (%s): Passed\n", i, test.name)
+		} else {
+			fmt.Printf("Test %d (%s): Failed - %s\n", i, test.name, message)
 		}
 	}
 
