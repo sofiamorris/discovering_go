@@ -455,11 +455,6 @@ func main() {
 			wantErr:  false,
 		},
 		{
-			name: "Unknown identifier",
-			exp:  IdC{name: "unknown"},
-			wantErr: true,
-		},
-		{
 			name: "Simple lambda",
 			exp: LamC{
 				args: []Symbol{"x"},
@@ -484,6 +479,57 @@ func main() {
 			expected: NumV{val: 42},
 			wantErr:  false,
 		},
+		{
+			name: "Unknown identifier",
+			exp:  IdC{name: "unknown"},
+			wantErr: true,
+		},
+		{
+			name: "Division by 0",
+			exp: AppC{
+				fun: IdC{name: "/"},
+				arg: []ExprC{NumC{num: 2}, NumC{num: 0}},
+			},
+			expected: nil,
+			wantErr: true,
+		},
+		{
+			name: "Arity mismatch",
+			exp: AppC{
+				fun: IdC{name: "+"},
+				arg: []ExprC{NumC{num: 1}}, 
+			},
+			expected: ErrorV{},
+			wantErr: true,
+		},
+		{
+			name: "Type mismatch in arithmetic",
+			exp: AppC{
+				fun: IdC{name: "+"},
+				arg: []ExprC{NumC{num: 1}, StrC{str: "hello"}},
+			},
+			expected: ErrorV{},
+			wantErr: true,
+		},
+		{
+			name: "Invalid comparison operands",
+			exp: AppC{
+				fun: IdC{name: "<="},
+				arg: []ExprC{StrC{str: "a"}, StrC{str: "b"}},
+			},
+			expected: ErrorV{},
+			wantErr: true,
+		},
+		{
+			name: "Apply non-function",
+			exp: AppC{
+				fun: NumC{num: 42},
+				arg: []ExprC{NumC{num: 1}},
+			},
+			expected: ErrorV{},
+			wantErr: true,
+		},
+
 	}
 
 	for i, test := range tests {
